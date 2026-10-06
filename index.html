@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-PT" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seletor de Profissões - Realm</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        minecraft: {
+                            dark: '#121214',
+                            card: '#18181b',
+                            border: '#27272a',
+                            emerald: '#10b981',
+                            emeraldHover: '#059669'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-minecraft-dark text-zinc-100 min-h-screen font-sans selection:bg-emerald-500 selection:text-black">
+
+    <div class="max-w-6xl mx-auto px-4 py-8" x-data="profissoesApp()">
+        
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <div class="inline-block bg-emerald-500/10 border border-emerald-500/30 px-4 py-1.5 rounded-full text-emerald-400 text-sm font-medium mb-3">
+                ⛏️ Minecraft Realm - Gestão de Papéis
+            </div>
+            <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-2">Seletor de Profissões</h1>
+            <p class="text-zinc-400 max-w-xl mx-auto">Escolha a sua especialidade para manter o Realm organizado e colaborativo entre todos os membros da equipa.</p>
+        </header>
+
+        <!-- Painel de Identificação e Lista de Jogadores -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+            
+            <!-- Coluna de Identificação -->
+            <div class="bg-minecraft-card border border-minecraft-border rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <span>👤</span> O seu Identificador
+                    </h2>
+                    <p class="text-sm text-zinc-400 mb-4">Insira o seu nick exato do Minecraft para registrar a sua profissão no Realm:</p>
+                    
+                    <input type="text" x-model="meuNome" placeholder="O seu nick aqui..." class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 focus:outline-none focus:border-emerald-500 transition mb-4">
+                    
+                    <template x-if="minhaProfissao">
+                        <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 mb-4">
+                            <span class="text-xs text-emerald-400 uppercase font-bold tracking-wider block">Profissão Atual:</span>
+                            <span class="text-lg font-bold text-emerald-300" x-text="minhaProfissao"></span>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="text-xs text-zinc-500 text-center">
+                    As alterações são salvas na nuvem automaticamente.
+                </div>
+            </div>
+
+            <!-- Coluna de Profissões Ocupadas no Realm -->
+            <div class="lg:col-span-2 bg-minecraft-card border border-minecraft-border rounded-2xl p-6 shadow-xl">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <span>📋</span> Profissões no Realm (Em Tempo Real)
+                </h2>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-56 overflow-y-auto pr-2">
+                    <template x-for="item in listaOcupados" :key="item.id">
+                        <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 flex items-center justify-between">
+                            <span class="font-medium text-zinc-200" x-text="item.nome"></span>
+                            <span class="bg-emerald-500/20 text-emerald-300 text-xs px-3 py-1 rounded-full font-semibold" x-text="item.profissao"></span>
+                        </div>
+                    </template>
+                    <template x-if="listaOcupados.length === 0">
+                        <p class="text-zinc-500 text-sm col-span-2 py-4 text-center">Ainda ninguém registrou profissões no banco de dados.</p>
+                    </template>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Catálogo de Profissões -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            <template x-for="prof in profissoes" :key="prof.nome">
+                <div class="bg-minecraft-card border border-minecraft-border rounded-2xl p-6 shadow-xl flex flex-col justify-between transition hover:border-emerald-500/50 group">
+                    <div>
+                        <div class="text-4xl mb-4 bg-zinc-900 w-16 h-16 rounded-xl flex items-center justify-center border border-zinc-800 group-hover:scale-105 transition">
+                            <span x-text="prof.icone"></span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-1 text-zinc-100" x-text="prof.nome"></h3>
+                        <p class="text-xs text-emerald-400 font-medium mb-3" x-text="prof.subtitulo"></p>
+                        <p class="text-sm text-zinc-400 mb-6" x-text="prof.descricao"></p>
+                    </div>
+
+                    <button @click="escolherProfissao(prof.nome)" 
+                            :disabled="!meuNome"
+                            class="w-full py-2.5 px-4 rounded-xl font-semibold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            :class="minhaProfissao === prof.nome ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' : 'bg-zinc-800 hover:bg-emerald-600 text-zinc-200 hover:text-white'">
+                        <span x-text="minhaProfissao === prof.nome ? '✓ Sua Profissão' : 'Escolher Papel'"></span>
+                    </button>
+                </div>
+            </template>
+
+        </div>
+
+    </div>
+
+    <!-- Script Atualizado -->
+    <script>
+        const SUPABASE_URL = 'https://hxnbtjjjxopuadcabhwv.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4bmJ0ampqeG9wdWFkY2FiaHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMDA5NTksImV4cCI6MjEwNjg3Njk1OX0.EXpm_dYBXYbIr4v7sHzpvfWxnFGH099i2UtTAH-82_Q';
+        
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function profissoesApp() {
+            return {
+                meuNome: localStorage.getItem('realm_nick') || '',
+                minhaProfissao: '',
+                listaOcupados: [],
+                profissoes: [
+                    { nome: 'FAZENDEIRO', subtitulo: 'FARM DE COMIDA E DERIVADOS', descricao: 'Responsável por plantações, criação de animais e produção contínua de alimentos para o Realm.', icone: '🌾' },
+                    { nome: 'GUERREIRO', subtitulo: 'ESPADA E MACHADO, COMBATE DE PERTO', descricao: 'Focado em combates corpo a corpo, defesa de bases e limpeza de dungeons perigosas.', icone: '⚔️' },
+                    { nome: 'ARQUEIRO', subtitulo: 'ATAQUE DE LONGE', descricao: 'Especialista em combate à distância com arcos e bestas, dando cobertura em raids e incursões.', icone: '🏹' },
+                    { nome: 'ARMEIRO', subtitulo: 'FAZ ARMAS E ARMADURAS', descricao: 'Responsável por forjar, encantar e manter o equipamento de combate e ferramentas da equipa.', icone: '🛡️' },
+                    { nome: 'CONSTRUTOR', subtitulo: 'CONSTRÓI COISAS', descricao: 'Arquiteto responsável pelo design estético das vilas, bases principais e decorações do mundo.', icone: '🧱' },
+                    { nome: 'REDSTONER', subtitulo: 'OUTRAS FARMS E SISTEMAS DE TRANSPORTE', descricao: 'Constrói engenharias complexas, farms automáticas avançadas e redes de transporte rápidas.', icone: '⚡' },
+                    { nome: 'EXPLORADOR', subtitulo: 'EXPLORA AS TERRAS DE LONGE', descricao: 'Desbrava horizontes distantes, descobre estruturas raras (cidades antigas, mansões) e loot.', icone: '🗺️' },
+                    { nome: 'MINERADOR', subtitulo: 'EXTRAÇÃO DE RECURSOS SUBTERRÂNEOS', descricao: 'Especializado na mineração pesada de diamantes, netherite, ferro e minérios essenciais.', icone: '⛏️' }
+                ],
+                init() {
+                    this.carregarDados();
+                    this.$watch('meuNome', value => {
+                        localStorage.setItem('realm_nick', value);
+                        this.verificarMinhaProfissao();
+                    });
+                },
+                async carregarDados() {
+                    const { data, error } = await _supabase.from('jogadores').select('*');
+                    if (!error && data) {
+                        this.listaOcupados = data;
+                        this.verificarMinhaProfissao();
+                    } else if (error) {
+                        console.error('Erro ao carregar dados:', error);
+                    }
+                },
+                verificarMinhaProfissao() {
+                    if (!this.meuNome) {
+                        this.minhaProfissao = '';
+                        return;
+                    }
+                    const encontrado = this.listaOcupados.find(j => j.nome.toLowerCase() === this.meuNome.toLowerCase());
+                    this.minhaProfissao = encontrado ? encontrado.profissao : '';
+                },
+                async escolherProfissao(nomeProfissao) {
+                    if (!this.meuNome) return;
+
+                    await _supabase.from('jogadores').delete().eq('nome', this.meuNome);
+                    
+                    const { error } = await _supabase.from('jogadores').insert([
+                        { id: Math.floor(Math.random() * 2000000000), nome: this.meuNome, profissao: nomeProfissao }
+                    ]);
+
+                    if (!error) {
+                        this.minhaProfissao = nomeProfissao;
+                        await this.carregarDados();
+                    } else {
+                        alert('Erro ao salvar: ' + error.message);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
